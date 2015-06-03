@@ -157,7 +157,6 @@ int main(int argc, const char * argv[])
 				c.ReadText(argv[5]);
 
 			result = PowMod(a, b, c);
-			c.ClearMemory();
             break;
         }
         default:
@@ -169,10 +168,6 @@ int main(int argc, const char * argv[])
 		result.WriteBin(argv[4]);
 	else
 		result.WriteText(argv[4]);
-
-	a.ClearMemory();
-	b.ClearMemory();
-	result.ClearMemory();
 
 	return 0;
 }

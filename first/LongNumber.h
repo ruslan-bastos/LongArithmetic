@@ -10,6 +10,11 @@ struct LongNumber
     unsigned int* pointer;
 };
 
+struct LongNumber ReadNumber(unsigned long long int value);
+
+struct LongNumber ReadString(const char* num);
+char* PrintNumber(struct LongNumber number);
+
 struct LongNumber ReadBinFile(const char* file);
 void WriteBinFile(const char* file, struct LongNumber number);
 

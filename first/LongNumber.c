@@ -1,11 +1,159 @@
 #include "LongNumber.h"
 
-
-
-LongNumber ReadBinFile(const char* file)
+struct LongNumber ReadNumber(unsigned long long int value)
 {
+	struct LongNumber num;
+
+	num.pointer = (unsigned int*)malloc(sizeof(unsigned int)*(3));
+	num.size = 0;
+
+	unsigned long long int carry = value;
+
+	do
+	{
+		num.size++;
+		num.pointer[num.size - 1] = carry % BASE;
+		carry = carry / BASE;
+	} while (carry);
+
+	return num;
+}
+
+
+char* PrintNumber(struct LongNumber number)
+{
+	struct LongNumber decimal;
+
+	decimal.size = number.size*10;
+
+	decimal = allocate(decimal, decimal.size);
+	decimal = zero(decimal, decimal.size);
+
+	unsigned int a, j = 0;
+	long long int tmp, i = number.size-1;
+	char carry = 0;
+
+	while (number.size != 1 || number.pointer[0]!=0)
+	{
+		carry = 0;
+
+		for (i = number.size - 1; i >= 0; i--)
+		{
+			tmp = carry * BASE + number.pointer[i];
+			number.pointer[i] = tmp / 10;
+			carry = tmp - (long long int) number.pointer[i] * 10;
+		}
+
+		carry += '0';
+
+		decimal.pointer[j] = carry;
+		j++;
+
+		number = Normalize(number);
+	}
+
+	decimal = Normalize(decimal);
+
+	char *string = NULL;
+	j = 0;
+
+	string = (char*)malloc(sizeof(char)*(1));
+	string[0] = '\0';
+
+	for (i = decimal.size - 1 ; i > -1; i--)
+		printf("%c", decimal.pointer[i]);
+
+	free(decimal.pointer);
+	decimal.size = 0;
+
+	return string;
+}
+
+struct LongNumber ReadString(const char* num)
+{
+	struct LongNumber bin, number;
+	char ch;
+	long long int i = 0;
+
+	for (; i < strlen(num); i++)
+		if (num[i] < '0' || num[i] > '9')
+		{
+			printf("Error: Wrong string: %s \n", num);
+			bin.pointer = (unsigned int*)malloc(sizeof(unsigned int)*(1));
+			bin.pointer[0] = 0;
+			bin.size = 1;
+			return bin;
+		}
+
+	number.size = strlen(num);
+
+	number = allocate(number, number.size);
+	number = zero(number, number.size);
+
+	bin.size = number.size / 9 + 1;
+
+	bin = allocate(bin, bin.size);
+	bin = zero(bin, bin.size);
+
+	unsigned int a, carry = 0, tmp, current, j, x;
+
+	i = number.size-1;
+
+	for(; i > -1; --i)
+		number.pointer[i] = num[number.size - i - 1 ] - '0';
+
+	current = 1;
+	j = 0;
+	x = 0;
+
+	while (number.size != 1 || number.pointer[0]!=0)
+	{
+		carry = 0;
+
+		for (i = number.size - 1; i >= 0; i--)
+		{
+			tmp = carry * 10 + number.pointer[i];
+			number.pointer[i] = tmp / 2;
+			carry = tmp - number.pointer[i] * 2;
+		}
+
+		number = Normalize(number);
+
+		bin.pointer[j] = ((current << x) * carry) | bin.pointer[j];
+
+		x++;
+
+		if(x == 32)
+		{
+			x = 0;
+			j++;
+		}
+	}
+
+	number = clear(number);
+
+	bin = Normalize(bin);
+
+	return bin;
+}
+
+struct LongNumber ReadBinFile(const char* file)
+{
+	FILE* f = fopen(file, "r");
+    if (!f) 
+	{
+        printf("Error: Unable to open file: %s \n", file);
+		struct LongNumber number;
+		number.size = 1;
+		number.pointer = (unsigned int*)malloc(sizeof(unsigned int)*(1));
+		number.pointer[0] = 0;
+		fclose(f);
+        return number;
+    }
+	fclose(f);
+
 	FILE* in = fopen(file, "rb");
-	LongNumber number;
+	struct LongNumber number;
 	number.size = 0;
 
 	fseek(in, 0, SEEK_END);
@@ -21,7 +169,9 @@ LongNumber ReadBinFile(const char* file)
 
 	fseek(in, SEEK_SET, 0);  //переход на начало строки
 
-	for (int i = 0; i < quotient; i++)
+	int i, j;
+
+	for(i = 0; i < quotient; i++)
 		fread(&number.pointer[i], sizeof(unsigned int), 1, in);
 
 	number.size = quotient;
@@ -31,7 +181,8 @@ LongNumber ReadBinFile(const char* file)
 		unsigned char ch;
 		number.size++;
 		number.pointer[quotient] = 0;
-		for(int j = 0; j<remainder; j++)
+
+		for(j = 0; j<remainder; j++)
 		{
 			fread(&ch, sizeof(unsigned char), 1, in);
 			number.pointer[quotient] |= (ch << j*8);
@@ -43,19 +194,34 @@ LongNumber ReadBinFile(const char* file)
 	return number;
 }
 
-void WriteBinFile(const char* file, LongNumber number)
+void WriteBinFile(const char* file, struct LongNumber number)
 {
 	FILE* out = fopen(file,"wb");
 
-	for (int i = 0 ; i < number.size; i++)
+	int i;
+
+	for (i = 0 ; i < number.size; i++)
 		fwrite(&number.pointer[i], sizeof(unsigned int), 1, out);
 
 	fclose(out);
 }
 
-LongNumber ReadTextFile(const char* file)
+struct LongNumber ReadTextFile(const char* file)
 {
-	LongNumber bin, number;
+	FILE* f = fopen(file, "r");
+    if (!f) 
+	{
+        printf("Error: Unable to open file: %s \n", file);
+		struct LongNumber number;
+		number.size = 1;
+		number.pointer = (unsigned int*)malloc(sizeof(unsigned int)*(1));
+		number.pointer[0] = 0;
+		fclose(f);
+        return number;
+    }
+	fclose(f);
+
+	struct LongNumber bin, number;
 	char ch;
 
 	number.size = 0;
@@ -65,7 +231,7 @@ LongNumber ReadTextFile(const char* file)
 	fseek(in, 0, SEEK_END);
 	number.size = ftell(in);
 
-	fseek(in, SEEK_SET, 0);  //переход на начало строки
+	fseek(in, SEEK_SET, 0);  
 
 	number = allocate(number, number.size);
 	number = zero(number, number.size);
@@ -119,11 +285,11 @@ LongNumber ReadTextFile(const char* file)
 	return bin;
 }
 
-void WriteTextFile(const char* file, LongNumber number)
+void WriteTextFile(const char* file, struct LongNumber number)
 {
 	FILE* out = fopen(file, "w");
 
-	LongNumber decimal;
+	struct LongNumber decimal;
 
 	decimal.size = number.size*10;
 
@@ -155,33 +321,33 @@ void WriteTextFile(const char* file, LongNumber number)
 
 	decimal = Normalize(decimal);
 
-	for (int i = decimal.size - 1 ; i > -1; i--)
+	for (i = decimal.size - 1 ; i > -1; i--)
 			fprintf(out, "%c", decimal.pointer[i]);
 
 	fclose(out);
 }
 
-LongNumber clear(LongNumber number)
+struct LongNumber clear(struct LongNumber number)
 {
 	free(number.pointer);
 	return number;
 }
 
-LongNumber allocate(LongNumber number, unsigned int size)
+struct LongNumber allocate(struct LongNumber number, unsigned int size)
 {
 	number.pointer = (unsigned int*)malloc(sizeof(unsigned int)*(size));
 	return number;
 }
 
-LongNumber zero(LongNumber number, unsigned int size)
+struct LongNumber zero(struct LongNumber number, unsigned int size)
 {
 	memset(number.pointer, 0, size * sizeof(unsigned int));
 	return number;
 }
 
-LongNumber copy(LongNumber from)
+struct LongNumber copy(struct LongNumber from)
 {
-    LongNumber cpy;
+    struct LongNumber cpy;
 
     cpy.size = from.size;
     cpy = allocate(cpy, cpy.size);
@@ -190,10 +356,8 @@ LongNumber copy(LongNumber from)
     return cpy;
 }
 
-int compare(LongNumber a, LongNumber b)  // функция сравнения двух больших чисел
-{   
-	// функция возвращает: 0 - если числа равны, >0 - если A больше, <0 - если A меньше.
-	
+int compare(struct LongNumber a, struct LongNumber b)
+{	
 	if(a.size > b.size)
 		return 1;
 
@@ -215,11 +379,11 @@ int compare(LongNumber a, LongNumber b)  // функция сравнения двух больших чисел
 		return 0;
 }
 
-LongNumber ADD(LongNumber a, LongNumber b)
+struct LongNumber ADD(struct LongNumber a, struct LongNumber b)
 {
 	unsigned long long int tmp;
 	unsigned int carry = 0, i;
-	LongNumber res;
+	struct LongNumber res;
 
 	if (a.size < b.size)
 	{
@@ -272,11 +436,11 @@ LongNumber ADD(LongNumber a, LongNumber b)
 	return res;
 }
 
-LongNumber SUB(LongNumber a, LongNumber b)
+struct LongNumber SUB(struct LongNumber a, struct LongNumber b)
 {
 	long long int tmp;
 	unsigned int carry = 0, i;
-	LongNumber res;
+	struct LongNumber res;
 
 	if (compare(a, b) < 0)
 	{
@@ -325,16 +489,16 @@ LongNumber SUB(LongNumber a, LongNumber b)
 	return res;
 }
 
-LongNumber MUL(LongNumber a, LongNumber b)
+struct LongNumber MUL(struct LongNumber a, struct LongNumber b)
 {
 	unsigned long long int tmp;
 	unsigned int carry = 0, i, j;
 
-	LongNumber res;
+	struct LongNumber res;
 
     res.size = a.size + b.size;
     res = allocate(res, res.size);
-    res = zero(res, res.size); //заполняет массив нулями
+    res = zero(res, res.size); 
 
     for (i = 0; i < b.size; i++)
     {
@@ -354,13 +518,13 @@ LongNumber MUL(LongNumber a, LongNumber b)
     return res;
 }
 
-LongNumber DIV(LongNumber a, LongNumber b, int sumbols)
+struct LongNumber DIV(struct LongNumber a, struct LongNumber b, int sumbols)
 {
-	LongNumber remainder; // остаток от деления
+	struct LongNumber remainder; 
 
-    if (compare(a, b) < 0)  // если делимое меньше делителя
+    if (compare(a, b) < 0)
     {
-        LongNumber res;
+        struct LongNumber res;
         res.size = 1;
         res = allocate(res, res.size);
         res.pointer[0] = 0;
@@ -371,9 +535,9 @@ LongNumber DIV(LongNumber a, LongNumber b, int sumbols)
 			return a;
     }
 
-    if (b.size == 1)  // если необходимо делить на одноразрядное число
+    if (b.size == 1)
     {
-		if (b.pointer[0] == 0) // если делитель равен нулю
+		if (b.pointer[0] == 0)
         {
             remainder.size = 0;
             remainder.pointer = NULL;
@@ -381,7 +545,7 @@ LongNumber DIV(LongNumber a, LongNumber b, int sumbols)
             return remainder;
         }
 
-		LongNumber res = SmallDIV(a, b.pointer[0]);
+		struct LongNumber res = SmallDIV(a, b.pointer[0]);
 
         remainder = SUB(a, SmallMul(res,b.pointer[0]));
 
@@ -390,15 +554,13 @@ LongNumber DIV(LongNumber a, LongNumber b, int sumbols)
 		else
 			return remainder;
     }
-
-    // деление на многоразрядное число
 	
 	remainder = copy(a);
 
-    LongNumber res;
+    struct LongNumber res;
     res.size = a.size - b.size + 1;
     res = allocate(res, res.size);
-	res = zero(res, res.size); //заполняет массив нулями
+	res = zero(res, res.size); 
 
     unsigned int i;
 	
@@ -406,14 +568,12 @@ LongNumber DIV(LongNumber a, LongNumber b, int sumbols)
     {
         unsigned long long int qGuessMax = BASE, qGuessMin = 0, qGuess; 
 		
-        // цикл - подбор бинарным поиском числа qGuess
         while (qGuessMax - qGuessMin > 1)
         {
             qGuess = (qGuessMax + qGuessMin) / 2;
-			
-            // получаем tmp = qGuess * divider * BASE^i;
-            LongNumber tmp = SmallMul(b, qGuess);
-            tmp = shiftLeft(tmp, i - 1);    // сдвигает число на (i - 1) разрядов влево
+
+            struct LongNumber tmp = SmallMul(b, qGuess);
+            tmp = shiftLeft(tmp, i - 1);   
             if (compare(tmp, remainder) > 0)
                 qGuessMax = qGuess;
             else
@@ -422,11 +582,9 @@ LongNumber DIV(LongNumber a, LongNumber b, int sumbols)
             tmp = clear(tmp);
         }
 
-        // получаем tmp = qGuessMin * divider * BASE ^ (i - 1) 
-        LongNumber tmp = SmallMul(b, qGuessMin);
+        struct LongNumber tmp = SmallMul(b, qGuessMin);
         tmp = shiftLeft(tmp, i - 1);
-		
-        //получаем remainder = remainder - tmp;
+
         remainder = SUB(remainder, tmp);
 
 		tmp = clear(tmp);
@@ -434,15 +592,9 @@ LongNumber DIV(LongNumber a, LongNumber b, int sumbols)
         res.pointer[i - 1] = qGuessMin;
     }
 
-	////////////////////////////////////////////////////////////////
-
 	remainder = Normalize(remainder);
 
-	////////////////////////////////////////////////////////////////
-
 	res = Normalize(res);
-
-	////////////////////////////////////////////////////////////////
 
     if(sumbols == 1)
 		return res;
@@ -450,16 +602,16 @@ LongNumber DIV(LongNumber a, LongNumber b, int sumbols)
 		return remainder;
 }
 
-LongNumber SmallMul(LongNumber a, unsigned long long int b)
+struct LongNumber SmallMul(struct LongNumber a, unsigned long long int b)
 {
 	unsigned long long int tmp, carry = 0;
 	unsigned int i, j;
 
-	LongNumber res;
+	struct LongNumber res;
 
     res.size = a.size + 1;
     res = allocate(res, res.size);
-    res = zero(res, res.size); //заполняет массив нулями
+    res = zero(res, res.size); 
 
 	carry = 0;
 
@@ -477,45 +629,47 @@ LongNumber SmallMul(LongNumber a, unsigned long long int b)
     return res;
 }
 
-LongNumber shiftLeft(LongNumber a, unsigned int s) // сдвигает число a на s разрядов влево
+struct LongNumber shiftLeft(struct LongNumber a, unsigned int s) 
 {
-    LongNumber current;
+    struct LongNumber current;
 	
 	current.size = a.size + s;
 	current = allocate(current, current.size);
 	current = zero(current, s);
 
-	for(int i = s; i < a.size + s; i++)
+	int i;
+
+	for(i = s; i < a.size + s; i++)
 		current.pointer[i] = a.pointer[i-s];
 
     return current;
 }
 
-LongNumber DEGREE(LongNumber a, LongNumber b, LongNumber c)
+struct LongNumber DEGREE(struct LongNumber a, struct LongNumber b, struct LongNumber c)
 { 
-	LongNumber res;
+	struct LongNumber res;
 	if(a.size < c.size)
 		res.size = c.size + c.size;
 	else
 		res.size = a.size + a.size;
 
 	res = allocate(res, res.size);
-    res = zero(res, res.size); //заполняет массив нулями
+    res = zero(res, res.size); 
 	res.pointer[0] = 1;
 
-	LongNumber com;
+	struct LongNumber com;
 	com.size = 1;
 	com = allocate(com, com.size);
 	com.pointer[0] = 0;
 
-	LongNumber value;
+	struct LongNumber value;
 	value.size = res.size;
 	value = allocate(value, value.size);
-    value = zero(value, value.size); //заполняет массив нулями
+    value = zero(value, value.size);
 
 	memcpy(value.pointer, a.pointer, a.size * sizeof(unsigned int));
 
-	LongNumber pow = copy(b);
+	struct LongNumber pow = copy(b);
 
 	while((compare(pow,com)) > 0)
 	{
@@ -537,16 +691,16 @@ LongNumber DEGREE(LongNumber a, LongNumber b, LongNumber c)
 	return res;
 }
 
-LongNumber SmallDIV(LongNumber a, unsigned long long int b)
+struct LongNumber SmallDIV(struct LongNumber a, unsigned long long int b)
 {
 		unsigned long long int tmp;
 		unsigned int carry = 0;
 		int i;
 
-        LongNumber res;
+        struct LongNumber res;
         res.size = a.size;
         res = allocate(res, res.size);
-		res = zero(res, res.size); //заполняет массив нулями
+		res = zero(res, res.size); 
 
         for (i = a.size - 1; i > -1; i--)
         {	
@@ -560,7 +714,7 @@ LongNumber SmallDIV(LongNumber a, unsigned long long int b)
 		return res;
 }
 
-LongNumber Normalize(LongNumber a)
+struct LongNumber Normalize(struct LongNumber a)
 {
 	unsigned int i = a.size-1;
 

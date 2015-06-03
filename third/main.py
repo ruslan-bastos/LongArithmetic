@@ -19,7 +19,6 @@ if ((len(sys.argv[2]) > 1 or sys.argv[2][0] == '\0') or sys.argv[2][0] != '+' an
     print "Error: Wrong operation: ", sys.argv[2][0]
     sys.exit(0)   
 
-
 if not os.path.isfile(sys.argv[3]) :
     print "Error: Unable to open file: ", sys.argv[3]
     sys.exit(0)
@@ -57,6 +56,8 @@ if len(sys.argv) == 7 :
         sys.exit(0)
 
     bin = 1
+
+   
 
 a = LN_Class.LN_Class()
 
@@ -99,16 +100,12 @@ if sys.argv[2][0] == '^' :
 	c.ReadText(sys.argv[5])
 
     result = LN_Class.PowMod(a, b, c)
-    c.ClearMemory()
   
 if bin == 1 :
     result.WriteBin(sys.argv[4])
 else :
     result.WriteText(sys.argv[4])
 
-a.ClearMemory()
-b.ClearMemory()
-result.ClearMemory()
 
 
 
